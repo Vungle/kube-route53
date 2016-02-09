@@ -82,53 +82,64 @@ def ec2_launch_event(ec2_instance_id):
     logging.info("Instance public dns: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicDnsName'])
     logging.info("Instance public IP: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress'])
 
-    # init route53 object
-    route53 = modules.route53.Route53()
+    # Filter on the machine_filter config value to determine if we want to add this machine into the DNS
+    machine_tag_value = ec2.get_tag_from_describe_instance_response(response_ec2_describe,
+                                                                    settings.get('machine_filter', 'ec2_tag_key'))
 
-    health_check_config_dict = {
-                'Port': int(settings.get('health_check', 'port')),
-                'Type': settings.get('health_check', 'protocol_type'),
-                'ResourcePath': settings.get('health_check', 'ResourcePath'),
-                'FullyQualifiedDomainName': response_ec2_describe['Reservations'][0]['Instances'][0]['PublicDnsName'],
-                'RequestInterval': int(settings.get('health_check', 'RequestInterval')),
-                'FailureThreshold': int(settings.get('health_check', 'FailureThreshold')),
-            }
+    if settings.get('machine_filter', 'ec2_tag_value') == machine_tag_value:
 
-    response_create_health_check = route53.create_health_check(health_check_config_dict)
+        logging.info("This machine passes the machine_filter.  Add to DNS. "+machine_tag_value)
 
-    logging.debug(response_create_health_check)
+        # init route53 object
+        route53 = modules.route53.Route53()
 
-    logging.info("Health check id: "+response_create_health_check['HealthCheck']['Id'])
+        health_check_config_dict = {
+                    'Port': int(settings.get('health_check', 'port')),
+                    'Type': settings.get('health_check', 'protocol_type'),
+                    'ResourcePath': settings.get('health_check', 'ResourcePath'),
+                    'FullyQualifiedDomainName': response_ec2_describe['Reservations'][0]['Instances'][0]['PublicDnsName'],
+                    'RequestInterval': int(settings.get('health_check', 'RequestInterval')),
+                    'FailureThreshold': int(settings.get('health_check', 'FailureThreshold')),
+                }
 
-    # Add tag for health check
-    response = route53.change_tags_for_resource_health_check(response_create_health_check['HealthCheck']['Id'],
-                                                             'Name', settings.get('health_check', 'name'))
-    response = route53.change_tags_for_resource_health_check(response_create_health_check['HealthCheck']['Id'],
-                                                             'instance-id', ec2_instance_id)
+        response_create_health_check = route53.create_health_check(health_check_config_dict)
 
-    # Create DNS record object
-    route53.set_hosted_zone_id(settings.get('route53', 'hosted_zone'))
+        logging.debug(response_create_health_check)
 
-    # Add DNS record
-    resource_record_set_dict = {
-                                'Name': ec2_instance_id+'.'+settings.get('route53', 'domain_name'),
-                                'Type': settings.get('dns_record_set', 'type'),
-                                'SetIdentifier': ec2_instance_id,
-                                'Weight': int(settings.get('dns_record_set', 'Weight')),
-                                'TTL': int(settings.get('dns_record_set', 'TTL')),
-                                'ResourceRecords': [
-                                    {
-                                        'Value': response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress']
-                                    },
-                                ],
-                                'HealthCheckId': response_create_health_check['HealthCheck']['Id']
-                            }
+        logging.info("Health check id: "+response_create_health_check['HealthCheck']['Id'])
 
-    response_create_resource_record_sets = route53.create_resource_record_sets('UPSERT',
-                                                                               resource_record_set_dict,
-                                                                               settings.get('dns_record_set', 'comment'))
+        # Add tag for health check
+        response = route53.change_tags_for_resource_health_check(response_create_health_check['HealthCheck']['Id'],
+                                                                 'Name', settings.get('health_check', 'name'))
+        response = route53.change_tags_for_resource_health_check(response_create_health_check['HealthCheck']['Id'],
+                                                                 'instance-id', ec2_instance_id)
 
-    logging.debug(response_create_resource_record_sets)
+        # Create DNS record object
+        route53.set_hosted_zone_id(settings.get('route53', 'hosted_zone'))
+
+        # Add DNS record
+        resource_record_set_dict = {
+                                    'Name': ec2_instance_id+'.'+settings.get('route53', 'domain_name'),
+                                    'Type': settings.get('dns_record_set', 'type'),
+                                    'SetIdentifier': ec2_instance_id,
+                                    'Weight': int(settings.get('dns_record_set', 'Weight')),
+                                    'TTL': int(settings.get('dns_record_set', 'TTL')),
+                                    'ResourceRecords': [
+                                        {
+                                            'Value': response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress']
+                                        },
+                                    ],
+                                    'HealthCheckId': response_create_health_check['HealthCheck']['Id']
+                                }
+
+        response_create_resource_record_sets = route53.create_resource_record_sets('UPSERT',
+                                                                                   resource_record_set_dict,
+                                                                                   settings.get('dns_record_set', 'comment'))
+
+        logging.debug(response_create_resource_record_sets)
+
+    else:
+        logging.info("This machine is not part of the machine_filter. Not adding to DNS. "+machine_tag_value)
 
 def ec2_terminate_event(ec2_instance_id):
     """

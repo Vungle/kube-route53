@@ -15,3 +15,7 @@ type: A
 Weight: 10
 TTL: 15
 comment: "Created by aws-route-53 automation"
+
+[machine_filter]
+ec2_tag_key: label
+ec2_tag_value: kube-prod1-slave-external
