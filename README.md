@@ -106,7 +106,19 @@ Deleting:
 
 ## AWS Lambda Setup
 
+You will need to create an AWS Lambda function. Point the Handler to `worker_scaling_event_dns.lambda_handler`
 
+### Packaging this app as a zip for Lambda
+
+Doc:  http://docs.aws.amazon.com/lambda/latest/dg/lambda-python-how-to-create-deployment-package.html
+
+* Add third party packages to the root of the directory
+
+        pip install configparser -t .
+
+* Add all the zip files to a zip
+
+        zip -r9 ~/Downloads/kube-route53-package.zip *
 
 ## Todo:
 

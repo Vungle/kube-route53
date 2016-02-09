@@ -121,9 +121,16 @@ def ec2_launch_event(ec2_instance_id):
         # Create DNS record object
         route53.set_hosted_zone_id(settings.get('route53', 'hosted_zone'))
 
+        # Get the DNS name to a simple or weighted
+        dns_name = ''
+        if settings.get('dns_record_type', 'type') == 'simple':
+            dns_name = ec2_instance_id+'.'+settings.get('route53', 'domain_name')
+        elif settings.get('dns_record_type', 'type') == 'weighted':
+            dns_name = settings.get('dns_record_type', 'dns_name')+'.'+settings.get('route53', 'domain_name')
+
         # Add DNS record
         resource_record_set_dict = {
-                                    'Name': ec2_instance_id+'.'+settings.get('route53', 'domain_name'),
+                                    'Name': dns_name,
                                     'Type': settings.get('dns_record_set', 'type'),
                                     'SetIdentifier': ec2_instance_id,
                                     'Weight': int(settings.get('dns_record_set', 'Weight')),
@@ -160,13 +167,12 @@ def ec2_terminate_event(ec2_instance_id):
     logging.info("Using route53 hosted zone id: "+settings.get('route53', 'hosted_zone'))
     logging.info("Domain name: "+settings.get('route53', 'domain_name'))
 
-    # Get instance information
-    #ec2 = modules.ec2.Ec2()
-
-    #response_ec2_describe = ec2.describe_instances(ec2_instance_id)
-
-    #logging.info("Instance public dns: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicDnsName'])
-    #logging.info("Instance public IP: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress'])
+    # Get the DNS name to a simple or weighted
+    dns_name = ''
+    if settings.get('dns_record_type', 'type') == 'simple':
+        dns_name = ec2_instance_id+'.'+settings.get('route53', 'domain_name')
+    elif settings.get('dns_record_type', 'type') == 'weighted':
+        dns_name = settings.get('dns_record_type', 'dns_name')+'.'+settings.get('route53', 'domain_name')
 
     # init route53 object
     route53 = modules.route53.Route53()
@@ -177,7 +183,7 @@ def ec2_terminate_event(ec2_instance_id):
 
     # Delete DNS record
     resource_record_set_dict = {
-                                'Name': ec2_instance_id+'.'+settings.get('route53', 'domain_name'),
+                                'Name': dns_name,
                                 'Type': settings.get('dns_record_set', 'type'),
                                 'SetIdentifier': ec2_instance_id,
                                 'Weight': int(settings.get('dns_record_set', 'Weight')),

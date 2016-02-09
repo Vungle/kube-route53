@@ -16,6 +16,16 @@ Weight: 10
 TTL: 15
 comment: "Created by aws-route-53 automation"
 
+[dns_record_type]
+# Route53 DNS type simple
+# -will create the DNS record set with the ec2 instance ID
+#type: simple
+
+# Route53 DNS type weighted
+# -will create the DNS record set all with the same name
+type: weighted
+dns_name: kube-ingress-us-east-1
+
 [machine_filter]
 ec2_tag_key: label
 ec2_tag_value: kube-prod1-slave-external
