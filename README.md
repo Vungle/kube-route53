@@ -1,5 +1,7 @@
 AWS Route53
 ===============
+This will add AWS EC2 machines into Route53 creating a Health Check and a DNS record for the host.  You can run
+this on the command line or add it into Lambda listening to auto scaling events to trigger an automatic add.
 
 ## Setting up your environment
 
@@ -31,7 +33,7 @@ There are two ways to give it the AWS keys
      export AWS_SECRET_ACCESS_KEY=
      export AWS_DEFAULT_REGION=us-east-1
 
-## Setup Ingress Machines DNS
+## Setup Machines DNS
 
 * Setup Health Checks
 * Setup DNS records
@@ -42,8 +44,13 @@ Procedure:
 1. Setup health checks to the default PublicDnsName
 1. Setup the weight DNS record
 
+### Usage
+
+Adding:
 
      python worker_scaling_event_dns.py --ec2-instance-id i-88b1eb01 --event-type 'autoscaling:EC2_INSTANCE_LAUNCH'
+
+Deleting:
 
      python worker_scaling_event_dns.py --ec2-instance-id i-88b1eb01 --event-type 'autoscaling:EC2_INSTANCE_TERMINATE'
 
@@ -96,4 +103,13 @@ Procedure:
       "StartTime": "2016-02-05T00:49:08.000Z",
       "Cause": "At 2016-02-05T00:48:38Z a user request update of AutoScalingGroup constraints to min: 1, max: 1, desired: 1 changing the desired capacity from 2 to 1.  At 2016-02-05T00:49:07Z an instance was taken out of service in response to a difference between desired and actual capacity, shrinking the capacity from 2 to 1.  At 2016-02-05T00:49:08Z instance i-4c76f4cc was selected for termination."
     }
+
+## AWS Lambda Setup
+
+
+
+## Todo:
+
+* Instead of putting the instance-public-ip into the health checks tags.  We should change the lifecycle policy for the
+instance to be in standby, then we can take action on it:  https://aws.amazon.com/blogs/aws/auto-scaling-update-lifecycle-standby-detach/
 

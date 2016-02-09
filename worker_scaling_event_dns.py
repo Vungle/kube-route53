@@ -108,11 +108,15 @@ def ec2_launch_event(ec2_instance_id):
 
         logging.info("Health check id: "+response_create_health_check['HealthCheck']['Id'])
 
-        # Add tag for health check
+        # Add tag for health check, and also adding additional tags so that we can find the DNS record later.
+        # We can only delete the DNS A Record if we have all of this information.
         response = route53.change_tags_for_resource_health_check(response_create_health_check['HealthCheck']['Id'],
                                                                  'Name', settings.get('health_check', 'name'))
         response = route53.change_tags_for_resource_health_check(response_create_health_check['HealthCheck']['Id'],
                                                                  'instance-id', ec2_instance_id)
+
+        response = route53.change_tags_for_resource_health_check(response_create_health_check['HealthCheck']['Id'],
+                                                                 'instance-public-ip', response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress'])
 
         # Create DNS record object
         route53.set_hosted_zone_id(settings.get('route53', 'hosted_zone'))
@@ -157,18 +161,19 @@ def ec2_terminate_event(ec2_instance_id):
     logging.info("Domain name: "+settings.get('route53', 'domain_name'))
 
     # Get instance information
-    ec2 = modules.ec2.Ec2()
+    #ec2 = modules.ec2.Ec2()
 
-    response_ec2_describe = ec2.describe_instances(ec2_instance_id)
+    #response_ec2_describe = ec2.describe_instances(ec2_instance_id)
 
-    logging.info("Instance public dns: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicDnsName'])
-    logging.info("Instance public IP: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress'])
+    #logging.info("Instance public dns: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicDnsName'])
+    #logging.info("Instance public IP: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress'])
 
     # init route53 object
     route53 = modules.route53.Route53()
     route53.set_hosted_zone_id(settings.get('route53', 'hosted_zone'))
 
     health_check_id = route53.get_health_check_by_tag('instance-id', ec2_instance_id)
+    instance_public_ip = route53.get_health_check_tag_value(ec2_instance_id, 'instance-public-ip')
 
     # Delete DNS record
     resource_record_set_dict = {
@@ -179,7 +184,7 @@ def ec2_terminate_event(ec2_instance_id):
                                 'TTL': int(settings.get('dns_record_set', 'TTL')),
                                 'ResourceRecords': [
                                     {
-                                        'Value': response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress']
+                                        'Value': instance_public_ip
                                     },
                                 ],
                                 'HealthCheckId': health_check_id
