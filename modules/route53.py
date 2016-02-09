@@ -25,6 +25,8 @@ class Route53:
         """
         Doc: http://boto3.readthedocs.org/en/latest/reference/services/route53.html#Route53.Client.change_resource_record_sets
 
+        Used for: add, update, and delete
+
         :return:
         """
 
@@ -36,7 +38,7 @@ class Route53:
                     {
                         'Action': action,
                         'ResourceRecordSet': resource_record_set_dict
-                    },
+                    }
                 ]
             }
         )
@@ -94,6 +96,79 @@ class Route53:
                 )
 
         return response
+
+    def get_health_check_by_tag(self, key, value):
+        """
+        Retrieves a health check by the key and value
+
+        Doc: http://boto3.readthedocs.org/en/latest/reference/services/route53.html#Route53.Client.list_health_checks
+
+        :param key:
+        :param value:
+        :return:
+        """
+
+        resource_type = 'healthcheck'
+
+        health_check_id = ''
+
+        health_check_list = self.list_health_checks()
+
+        #logging.debug((health_check_list))
+
+        # For each of the health check, pull the tags for each ID
+        for item in health_check_list['HealthChecks']:
+            logging.debug(item['Id'])
+
+            resource_tags = self.list_tags_for_resource(resource_type, item['Id'])
+
+            logging.debug("resource_tags")
+            logging.debug(resource_tags)
+
+            # Loop through the tag list to see if we can find the key/value we want
+            for a_tag in resource_tags['ResourceTagSet']['Tags']:
+                if key == a_tag['Key'] and value == a_tag['Value']:
+                    health_check_id = item['Id']
+
+        return health_check_id
+
+    def list_health_checks(self):
+        """
+        Get a list of health checks
+
+        :return:
+        """
+
+        # This will only grab the first hundred.  Have to implement paging for more than 100.
+        response = self.client.list_health_checks()
+               #     Marker='string',
+               #     MaxItems='string'
+               # )
+
+        return response
+
+    def list_tags_for_resource(self, resource_type, resource_id):
+        """
+        Gets the tags for a given resource_type and resource_id
+
+        resource_type = 'healthcheck'|'hostedzone'
+
+        Doc: http://boto3.readthedocs.org/en/latest/reference/services/route53.html#Route53.Client.list_tags_for_resource
+
+        :param resource_id:
+        :return:
+        """
+
+        response = self.client.list_tags_for_resource(
+                    ResourceType=resource_type,
+                    ResourceId=resource_id
+                )
+
+        return response
+
+
+
+
 
 
 

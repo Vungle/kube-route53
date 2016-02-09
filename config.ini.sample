@@ -1,0 +1,17 @@
+[route53]
+hosted_zone:  "AWS Console->Services-Route 53->Hosted Zone->Hosted Zone ID"
+domain_name: unit-test-zone.com
+
+[health_check]
+name: kube-ingress
+port: 80
+protocol_type: HTTP
+ResourcePath: /
+RequestInterval: 10
+FailureThreshold: 3
+
+[dns_record_set]
+type: A
+Weight: 10
+TTL: 15
+comment: "Created by aws-route-53 automation"

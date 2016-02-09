@@ -43,7 +43,9 @@ Procedure:
 1. Setup the weight DNS record
 
 
-     python worker_create_external_ingress_dns.py --ec2-instance-id i-88b1eb01 --event-type 'autoscaling:EC2_INSTANCE_LAUNCH'
+     python worker_scaling_event_dns.py --ec2-instance-id i-88b1eb01 --event-type 'autoscaling:EC2_INSTANCE_LAUNCH'
+
+     python worker_scaling_event_dns.py --ec2-instance-id i-88b1eb01 --event-type 'autoscaling:EC2_INSTANCE_TERMINATE'
 
 ### Launch SNS Message:
 

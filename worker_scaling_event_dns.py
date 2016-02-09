@@ -67,6 +67,7 @@ def ec2_launch_event(ec2_instance_id):
     settings = configparser.ConfigParser()
     settings.read('config.ini')
 
+    logging.info("Event: ec2_launch_event")
     logging.info("Working on ec2-instance id: "+ec2_instance_id)
     logging.info("Using route53 hosted zone id: "+settings.get('route53', 'hosted_zone'))
     logging.info("Domain name: "+settings.get('route53', 'domain_name'))
@@ -81,7 +82,7 @@ def ec2_launch_event(ec2_instance_id):
     logging.info("Instance public dns: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicDnsName'])
     logging.info("Instance public IP: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress'])
 
-    # Create health check
+    # init route53 object
     route53 = modules.route53.Route53()
 
     health_check_config_dict = {
@@ -131,8 +132,67 @@ def ec2_launch_event(ec2_instance_id):
 
 def ec2_terminate_event(ec2_instance_id):
     """
+    When an ec2 instance is terminated, the DNS record and health check for this server is removed
 
     """
+
+    # config
+    settings = configparser.ConfigParser()
+    settings.read('config.ini')
+
+    logging.info("Event: ec2_termination_event")
+    logging.info("Working on ec2-instance id: "+ec2_instance_id)
+    logging.info("Using route53 hosted zone id: "+settings.get('route53', 'hosted_zone'))
+    logging.info("Domain name: "+settings.get('route53', 'domain_name'))
+
+    # Get instance information
+    ec2 = modules.ec2.Ec2()
+
+    response_ec2_describe = ec2.describe_instances(ec2_instance_id)
+
+    logging.info("Instance public dns: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicDnsName'])
+    logging.info("Instance public IP: "+response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress'])
+
+    # init route53 object
+    route53 = modules.route53.Route53()
+    route53.set_hosted_zone_id(settings.get('route53', 'hosted_zone'))
+
+    health_check_id = route53.get_health_check_by_tag('instance-id', ec2_instance_id)
+
+    # Delete DNS record
+    resource_record_set_dict = {
+                                'Name': ec2_instance_id+'.'+settings.get('route53', 'domain_name'),
+                                'Type': settings.get('dns_record_set', 'type'),
+                                'SetIdentifier': ec2_instance_id,
+                                'Weight': int(settings.get('dns_record_set', 'Weight')),
+                                'TTL': int(settings.get('dns_record_set', 'TTL')),
+                                'ResourceRecords': [
+                                    {
+                                        'Value': response_ec2_describe['Reservations'][0]['Instances'][0]['PublicIpAddress']
+                                    },
+                                ],
+                                'HealthCheckId': health_check_id
+                            }
+
+    logging.debug(resource_record_set_dict)
+
+    try:
+        response_delete_resource_record_sets = route53.create_resource_record_sets('DELETE', resource_record_set_dict, '')
+
+        logging.debug(response_delete_resource_record_sets)
+    except:
+        logging.info("Unable to delete the record set")
+        logging.info(resource_record_set_dict)
+
+
+    # Search for health check via tag
+    searched_health_check_id = route53.get_health_check_by_tag('instance-id', ec2_instance_id)
+
+    # Delete health check
+    try:
+        delete_response = route53.delete_health_check(searched_health_check_id)
+    except:
+        logging.info("Unable to delete the health check")
 
 if __name__ == "__main__":
     """
