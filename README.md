@@ -106,7 +106,49 @@ Deleting:
 
 ## AWS Lambda Setup
 
-You will need to create an AWS Lambda function. Point the Handler to `worker_scaling_event_dns.lambda_handler`
+You will need to create an AWS Lambda function. 
+
+### Lambda Settings
+
+* Point the Handler to `worker_scaling_event_dns.lambda_handler`
+* Memory 128MB
+* Timeout 30 sec
+* Role
+
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents"
+                    ],
+                    "Resource": "arn:aws:logs:*:*:*"
+                },
+                {
+                    "Sid": "Stmt1454995642000",
+                    "Effect": "Allow",
+                    "Action": [
+                        "ec2:*"
+                    ],
+                    "Resource": [
+                        "*"
+                    ]
+                },
+                {
+                    "Sid": "Stmt1454995661000",
+                    "Effect": "Allow",
+                    "Action": [
+                        "route53:*"
+                    ],
+                    "Resource": [
+                        "*"
+                    ]
+                }
+            ]
+        }
 
 ### Packaging this app as a zip for Lambda
 
