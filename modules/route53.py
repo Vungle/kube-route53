@@ -1,4 +1,5 @@
 import boto3
+import botocore
 import logging
 import random
 
@@ -120,15 +121,22 @@ class Route53:
         for item in health_check_list['HealthChecks']:
             logging.debug(item['Id'])
 
-            resource_tags = self.list_tags_for_resource(resource_type, item['Id'])
+            try:
+                resource_tags = self.list_tags_for_resource(resource_type, item['Id'])
 
-            logging.debug("resource_tags")
-            logging.debug(resource_tags)
+                logging.debug("resource_tags")
+                logging.debug(resource_tags)
 
-            # Loop through the tag list to see if we can find the key/value we want
-            for a_tag in resource_tags['ResourceTagSet']['Tags']:
-                if key == a_tag['Key'] and value == a_tag['Value']:
-                    health_check_id = item['Id']
+                # Loop through the tag list to see if we can find the key/value we want
+                for a_tag in resource_tags['ResourceTagSet']['Tags']:
+                    if key == a_tag['Key'] and value == a_tag['Value']:
+                        health_check_id = item['Id']
+
+            except botocore.exceptions.ClientError as e:
+                print "Unexpected error: %s" % e
+                random.uniform(1, 30)
+            except:
+                logging.error("An error occured while trying to retrieve the tags")
 
         return health_check_id
 
@@ -151,22 +159,31 @@ class Route53:
         for item in health_check_list['HealthChecks']:
             logging.debug(item['Id'])
 
-            resource_tags = self.list_tags_for_resource(resource_type, item['Id'])
+            try:
+                resource_tags = self.list_tags_for_resource(resource_type, item['Id'])
 
-            logging.debug("resource_tags")
-            logging.debug(resource_tags)
+                if resource_tags is not None:
 
-            # Loop through the tag list to see if we can find the key/value we want
-            for a_tag in resource_tags['ResourceTagSet']['Tags']:
+                    logging.debug("resource_tags")
+                    logging.debug(resource_tags)
 
-                if a_tag['Value'] == ec2_instance_id:
-                    # This is the health check with the matching health check ID, look for the instance-public-ip
+                    # Loop through the tag list to see if we can find the key/value we want
+                    for a_tag in resource_tags['ResourceTagSet']['Tags']:
 
-                    for a_tag2 in resource_tags['ResourceTagSet']['Tags']:
-                        logging.debug(a_tag2['Key'])
-                        logging.debug(a_tag2['Value'])
-                        if a_tag2['Key'] == key:
-                            tag_value = a_tag2['Value']
+                        if a_tag['Value'] == ec2_instance_id:
+                            # This is the health check with the matching health check ID, look for the instance-public-ip
+
+                            for a_tag2 in resource_tags['ResourceTagSet']['Tags']:
+                                logging.debug(a_tag2['Key'])
+                                logging.debug(a_tag2['Value'])
+                                if a_tag2['Key'] == key:
+                                    tag_value = a_tag2['Value']
+
+            except botocore.exceptions.ClientError as e:
+                print "Unexpected error: %s" % e
+                random.uniform(1, 30)
+            except:
+                logging.error("An error occured while trying to retrieve the tags")
 
         return tag_value
 
@@ -197,17 +214,17 @@ class Route53:
         :return:
         """
 
-        response = self.client.list_tags_for_resource(
-                    ResourceType=resource_type,
-                    ResourceId=resource_id
-                )
+        response = None
+
+        try:
+            response = self.client.list_tags_for_resource(
+                        ResourceType=resource_type,
+                        ResourceId=resource_id
+                    )
+
+            random.uniform(0.2, 5)
+
+        except:
+            logging.error("Error occured when retrieving the client tags.")
 
         return response
-
-
-
-
-
-
-
-
